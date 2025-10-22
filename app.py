@@ -4,8 +4,7 @@ from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
-os.environ["GROQ_API_KEY"] = "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"
-
+os.environ["GROQ_API_KEY"] = os.getenv('GROQ_KEY')
 app = Flask(__name__)
 
 @app.route("/")

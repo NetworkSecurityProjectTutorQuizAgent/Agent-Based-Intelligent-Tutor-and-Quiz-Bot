@@ -1,0 +1,53 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environments
+venv/
+virenv/
+env/
+.venv/
+
+# Environment variables and API keys
+*.env
+.env.*
+.env
+
+# === Flask specific ===
+instance/
+*.db
+*.sqlite3
+*.log
+
+# === VS Code / PyCharm ===
+.vscode/
+.idea/
+
+# === OS files ===
+.DS_Store
+Thumbs.db
+
+# === Cache & build ===
+build/
+dist/
+*.egg-info/
+*.egg
+
+# === Notebooks ===
+.ipynb_checkpoints/
+
+# === Dependencies ===
+__pypackages__/
+pip-wheel-metadata/
+
+# === Misc ===
+*.bak
+*.tmp
+
+# === Node frontend (if you add one later) ===
+node_modules/
+npm-debug.log
+yarn-error.log
