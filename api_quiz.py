@@ -763,3 +763,85 @@ def generate_quiz(topic: Optional[str], question_type: str, count: int) -> QuizR
     except Exception as e:
         print(f"Unexpected error in quiz generation: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+async def check_quiz_answer(question_id: str, user_answer: str) -> QuizCheckResponse:
+    """Check quiz answer with context retrieval and web citations."""
+    if question_id not in _quiz_cache:
+        raise HTTPException(status_code=404, detail="Question not found")
+
+    try:
+        cached_data = _quiz_cache[question_id]
+        question_text = cached_data.get("question", "")
+        topic = cached_data.get("topic", "")
+        question_type = cached_data["question_type"]
+        correct_answer = cached_data["correct_answer"]
+        explanation = cached_data.get("explanation", "See context for details")
+        citations = cached_data.get("citations", [])
+
+        # Retrieve fresh context based on user's answer for validation
+        if user_answer and user_answer.strip():
+            # Create search query from question + user's answer for relevant context
+            search_query = f"{question_text} {user_answer}".strip()
+            if len(search_query) < 10:  # Fallback if query is too short
+                search_query = f"{question_text} {topic}"
+
+            # Get relevant context from vector database
+            answer_embedding = _embed_query(search_query)
+            relevant_contexts = _fetch_context(answer_embedding, QUIZ_TOP_K)
+
+            # Combine contexts for LLM validation
+            context_text = "\n\n".join([f"[{c.rank}] {c.text}" for c in relevant_contexts if c.text])
+        else:
+            context_text = cached_data.get("context", "")
+
+        # Grade the answer using LLM with retrieved context
+        is_correct, grade, confidence = _grade_answer(
+            user_answer,
+            correct_answer,
+            question_type,
+            question=question_text,
+            context=context_text
+        )
+
+        if question_type in ['multiple_choice', 'true_false']:
+            feedback = f"Your answer: '{user_answer}'. Correct answer: '{correct_answer}'"
+        else:
+            feedback = f"Your answer has been graded as '{grade}' with {confidence:.1%} confidence. "
+            if not is_correct:
+                feedback += f"The expected answer was: '{correct_answer[:100]}'"
+
+        web_citations = []
+        try:
+            search_query = f"{correct_answer[:50]} {question_type.replace('_', ' ')}"
+            web_citations = await _get_web_citations_for_feedback(search_query, topic)
+        except Exception as e:
+            print(f"Failed to get web citations: {e}")
+
+        formatted_web_citations = [
+            {
+                'title': wc.title,
+                'url': wc.url,
+                'snippet': wc.snippet,
+                'source': wc.source
+            }
+            for wc in web_citations
+        ]
+
+        return QuizCheckResponse(
+            is_correct=is_correct,
+            correct_answer=correct_answer,
+            explanation=explanation,
+            user_grade=grade,
+            feedback=feedback,
+            citations=citations,
+            web_citations=formatted_web_citations,
+            confidence_score=confidence
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Answer checking failed: {str(e)}")
+
+
+def get_hardcoded_topics() -> List[str]:
+    """Return list of hardcoded topics."""
+    return HARDCODED_TOPICS
