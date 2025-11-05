@@ -677,3 +677,89 @@ REQUIREMENTS:
 - Include ONLY the JSON in your response - nothing else
 
 Now generate the question:"""
+
+def generate_quiz(topic: Optional[str], question_type: str, count: int) -> QuizResponse:
+    """Generate quiz questions - randomly or topic-specific."""
+    print(f"=== STARTING QUIZ GENERATION ===")
+    print(f"Parameters: topic={topic}, question_type={question_type}, count={count}")
+    
+    try:
+        # If no topic provided, randomly select from hardcoded topics
+        if not topic or not topic.strip():
+            topic_query = random.choice(HARDCODED_TOPICS)
+            print(f"No topic provided, selected random topic: {topic_query}")
+        else:
+            topic_query = topic.strip()
+        query_embedding = _embed_query(topic_query)
+        contexts = _fetch_context(query_embedding, QUIZ_TOP_K)
+
+        if not contexts:
+            print("No context found for quiz generation")
+            raise HTTPException(status_code=404, detail="No context for quiz generation")
+
+        print(f"Found {len(contexts)} context items")
+
+        questions = []
+        seen_questions = set()
+        num_questions = max(MIN_QUESTIONS, min(count, MAX_QUESTIONS))
+        
+        i = 0
+        attempts = 0
+        max_attempts = num_questions * 10  # Increased from 6 to 10 for more attempts
+        while i < num_questions and attempts < max_attempts:
+            print(f"=== Generating question {i+1}/{num_questions} (attempt {attempts+1}) ===")
+            q_type = question_type if question_type != 'random' else random.choice(['multiple_choice', 'true_false', 'open_ended'])
+            ctx_subset = _select_context_subset(contexts)
+            q = _generate_question_from_context(ctx_subset, q_type, topic_query, attempt=attempts)
+            
+            # Normalize question for duplicate detection (remove punctuation, lowercase, strip whitespace)
+            q_normalized = re.sub(r'[^\w\s]', '', q.question.lower().strip())
+            
+            # Check for duplicates using normalized text and similarity threshold
+            is_duplicate = False
+            for seen_q in seen_questions:
+                seen_normalized = re.sub(r'[^\w\s]', '', seen_q.lower().strip())
+                # Calculate simple word overlap similarity
+                q_words = set(q_normalized.split())
+                seen_words = set(seen_normalized.split())
+                if len(q_words) > 0:
+                    overlap = len(q_words & seen_words) / len(q_words)
+                    if overlap > 0.7:  # 70% word overlap = duplicate
+                        print(f"Duplicate detected: {overlap:.2%} similarity")
+                        is_duplicate = True
+                        break
+            
+            if not is_duplicate:
+                seen_questions.add(q.question.strip())
+                context_text = "\n\n".join([f"[{c.rank}] {c.text}" for c in ctx_subset if c.text])
+                citations_for_cache = [
+                    {"source": (c.source or "context"), "page": c.page, "rank": c.rank}
+                    for c in ctx_subset[:7] if c.text and c.text.strip()
+                ]
+                _quiz_cache[q.id] = {
+                    "correct_answer": q.correct_answer,
+                    "question_type": q.type,
+                    "explanation": q.explanation,
+                    "citations": citations_for_cache,
+                    "topic": topic_query,
+                    "question": q.question,
+                    "context": context_text
+                }
+                questions.append(q)
+                i += 1
+                print(f"Question {i} accepted and cached")
+            else:
+                print(f"Question rejected as duplicate")
+            
+            attempts += 1
+
+        print(f"=== QUIZ GENERATION COMPLETE ===")
+        print(f"Generated {len(questions)} questions successfully")
+        return QuizResponse(total_questions=len(questions), questions=questions)
+        
+    except HTTPException:
+        print(f"HTTP Exception in quiz generation", exc_info=True)
+        raise
+    except Exception as e:
+        print(f"Unexpected error in quiz generation: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
