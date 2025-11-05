@@ -477,3 +477,203 @@ EXAMPLES:
 Provide only ONE grade (A, B, C, D, or F). Focus on semantic meaning from vector database context, not exact wording.
 
 CRITICAL: For open-ended networking questions, require SPECIFIC technical details and explanations. Generic, vague, or superficial answers that lack technical depth must receive Grade F, regardless of any partial correctness. The answer must demonstrate actual understanding of networking concepts, not just common sense statements."""
+    try:
+        response = client.chat(
+            model=model_name,
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.3, "num_predict": 400}
+        )
+        
+        result_text = response["message"]["content"].strip()
+        
+        json_match = re.search(r'\{.*\}', result_text, re.DOTALL)
+        if json_match:
+            result = json.loads(json_match.group())
+            grade = result.get('grade', 'F')
+            is_correct = result.get('is_correct', False)
+            confidence = result.get('confidence', 0.0)
+            
+            # Ensure grade is a single letter
+            if grade not in ['A', 'B', 'C', 'D', 'F']:
+                grade = 'C'  # Default fallback
+                
+            return is_correct, grade, confidence
+        else:
+            print("No valid JSON in LLM grading response")
+            return False, 'C', 0.5
+        
+    except Exception as e:
+        print(f"LLM answer grading failed: {e}")
+        return False, 'C', 0.0
+
+
+def _grade_answer(user_answer: str, correct_answer: str, question_type: str, question: str = "", context: str = "") -> tuple[bool, str, float]:
+    """Grade answers using LLM for open-ended questions, exact match for others."""
+    if not user_answer or not user_answer.strip():
+        return False, 'F', 0.0
+
+    if question_type in ['multiple_choice', 'true_false']:
+        # Exact match for objective questions
+        if user_answer.lower().strip() == correct_answer.lower().strip():
+            return True, 'A', 1.0
+        else:
+            return False, 'F', 0.0
+    else:  # open_ended
+        # Use LLM-powered grading for all open-ended answers (no pre-validation)
+        return _llm_grade_open_ended_answer(question, user_answer, correct_answer, context)
+
+
+def _get_prompt_for_type(question_type: str, topic: str, context_text: str) -> str:
+    """Get the appropriate prompt template based on question type."""
+    if question_type == 'multiple_choice':
+        return _get_multiple_choice_prompt(topic, context_text)
+    elif question_type == 'true_false':
+        return _get_true_false_prompt(topic, context_text)
+    elif question_type == 'open_ended':
+        return _get_open_ended_prompt(topic, context_text)
+    else:
+        return _get_multiple_choice_prompt(topic, context_text)
+
+def _get_multiple_choice_prompt(topic: str, context_text: str) -> str:
+    """Generate prompt for multiple choice questions."""
+    return f"""You are creating a multiple choice question about {topic} based on the provided networking context.
+
+CONTEXT:
+{context_text[:1000]}
+
+TASK: Create ONE multiple choice question with exactly 4 options where only ONE option is correct.
+
+CRITICAL REQUIREMENTS:
+1. You must respond with VALID JSON ONLY - no other text, no explanations, no markdown
+2. The JSON must contain exactly these 4 keys: "question", "correct_answer", "options", "explanation"
+3. "options" must be an array with exactly 4 strings
+4. "correct_answer" must be one of the options (exact string match)
+5. All options must be complete, meaningful sentences based on the context
+6. NEVER reference images, figures, diagrams, pictures, tables, or visual elements in the question
+7. NEVER use phrases like "see the figure", "as shown in", "refer to the diagram", "in the picture above"
+8. Questions must be answerable using ONLY the text provided in the context
+9. Make each question unique and specific - avoid generic phrasing
+
+OUTPUT FORMAT (copy this structure exactly):
+{{
+    "question": "Clear specific question about {topic} that can be answered from the context",
+    "correct_answer": "The exact text of the correct option from the options array below",
+    "options": [
+        "First option (this should be the correct answer)",
+        "Second option (plausible but incorrect)",
+        "Third option (plausible but incorrect)",
+        "Fourth option (plausible but incorrect)"
+    ],
+    "explanation": "Brief explanation of why the correct answer is right based on the context"
+}}
+
+EXAMPLE:
+If the context is about DNS, your response should look like:
+{{
+    "question": "What is the primary function of DNS servers in computer networks?",
+    "correct_answer": "To translate domain names into IP addresses",
+    "options": [
+        "To translate domain names into IP addresses",
+        "To encrypt data transmissions between networks",
+        "To route packets between different networks",
+        "To filter malicious network traffic"
+    ],
+    "explanation": "DNS servers primarily function as a directory service that maps human-readable domain names to machine-readable IP addresses."
+}}
+
+REQUIREMENTS:
+- Base your question and answers ONLY on the provided context
+- Make incorrect options plausible but clearly wrong
+- Ensure the correct answer is definitively supported by the context
+- All options should be similar in length and complexity
+- Include ONLY the JSON in your response - nothing else
+
+Now generate the question:"""
+
+def _get_true_false_prompt(topic: str, context_text: str) -> str:
+    """Generate prompt for true/false questions."""
+    return f"""You are creating a true/false question about {topic} based on the provided networking context.
+
+CONTEXT:
+{context_text[:1000]}
+
+TASK: Create ONE true/false question that can be definitively answered as True or False based on the context.
+
+CRITICAL REQUIREMENTS:
+1. You must respond with VALID JSON ONLY - no other text, no explanations, no markdown
+2. The JSON must contain exactly these 4 keys: "question", "correct_answer", "options", "explanation"
+3. "options" must be exactly: ["True", "False"]
+4. "correct_answer" must be either "True" or "False"
+5. The question must be a clear statement that is definitively true or false
+6. NEVER reference images, figures, diagrams, pictures, tables, or visual elements in the question
+7. NEVER use phrases like "see the figure", "as shown in", "refer to the diagram", "in the picture above"
+8. Questions must be answerable using ONLY the text provided in the context
+9. Make each question unique and specific - avoid generic phrasing
+
+OUTPUT FORMAT (copy this structure exactly):
+{{
+    "question": "True or False: [clear statement that can be definitively true or false based on the context]",
+    "correct_answer": "True or False",
+    "options": ["True", "False"],
+    "explanation": "Brief explanation supporting the answer from the context"
+}}
+
+EXAMPLE:
+If the context is about DNS, your response should look like:
+{{
+    "question": "True or False: DNS servers translate human-readable domain names into machine-readable IP addresses",
+    "correct_answer": "True",
+    "options": ["True", "False"],
+    "explanation": "The context clearly states that DNS functions as a directory service for name-to-address translation."
+}}
+
+REQUIREMENTS:
+- Base the statement ONLY on the provided context
+- Make it a definitive statement, not a question
+- Ensure the answer is clearly supported by the context
+- Include ONLY the JSON in your response - nothing else
+
+Now generate the question:"""
+
+def _get_open_ended_prompt(topic: str, context_text: str) -> str:
+    """Generate prompt for open-ended questions."""
+    return f"""You are creating an open-ended question about {topic} based on the provided networking context.
+
+CONTEXT:
+{context_text[:1000]}
+
+TASK: Create ONE open-ended question that requires detailed explanation based on the context.
+
+CRITICAL REQUIREMENTS:
+1. You must respond with VALID JSON ONLY - no other text, no explanations, no markdown
+2. The JSON must contain exactly these 3 keys: "question", "correct_answer", "explanation"
+3. The question should require detailed explanation, not simple recall
+4. The correct answer should be comprehensive and based on the context
+5. Do not include any chapter numbers, page numbers, section numbers, references, citations, or source names in the question or explanation
+6. NEVER reference images, figures, diagrams, pictures, tables, or visual elements in the question
+7. NEVER use phrases like "see the figure", "as shown in", "refer to the diagram", "in the picture above"
+8. Questions must be answerable using ONLY the text provided in the context
+9. Make each question unique and specific - avoid generic phrasing
+
+OUTPUT FORMAT (copy this structure exactly):
+{{
+    "question": "Explain or describe [specific aspect of {topic} that requires detailed explanation]",
+    "correct_answer": "Comprehensive answer based on the context",
+    "explanation": "Key points that should be covered in a good answer"
+}}
+
+EXAMPLE:
+If the context is about DNS, your response should look like:
+{{
+    "question": "Explain how DNS servers facilitate internet communication and why they are essential for network functionality",
+    "correct_answer": "DNS servers act as the internet's directory service, translating human-readable domain names into IP addresses that computers use to communicate. When a user enters a website address, DNS resolves this to the appropriate IP address, enabling the connection to be established.",
+    "explanation": "A good answer should cover the translation function, the role in internet connectivity, and the importance for user experience."
+}}
+
+REQUIREMENTS:
+- Base the question ONLY on the provided context
+- The question should require detailed explanation, not simple recall
+- The correct answer should be comprehensive and well-structured
+- Include ONLY the JSON in your response - nothing else
+
+Now generate the question:"""
