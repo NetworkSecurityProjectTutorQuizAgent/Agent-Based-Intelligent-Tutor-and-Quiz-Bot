@@ -311,4 +311,169 @@ def _llm_generate_question(context_text: str, question_type: str, topic: str, at
     except Exception as e:
         print(f"LLM question generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Question generation failed: {str(e)}")
+    
+def _generate_question_from_context(contexts: List[ContextItem], question_type: str, topic: Optional[str] = None, attempt: int = 0) -> QuizQuestion:
+    """Generate a quiz question using LLM or raise error if unavailable."""
+    print(f"Generating question from context - type: {question_type}, topic: {topic}, attempt: {attempt}")
+    
+    if not contexts:
+        print("No contexts provided, using fallback context")
+        contexts = [ContextItem(rank=1, source=None, page=None, text=f"Key facts about {topic or 'networking'}.")]
 
+    # Combine all context texts for LLM (unaltered)
+    context_text = "\n\n".join([f"[{c.rank}] {c.text}" for c in contexts if c.text])
+    
+    # No citations needed in the question payload
+    citations = []
+
+    question_id = str(uuid.uuid4())
+    topic_label = (topic or "networking").title()
+
+    try:
+        # Use LLM-powered question generation with attempt number for variation
+        llm_result = _llm_generate_question(context_text, question_type, topic_label, attempt)
+        print("LLM question generation successful")
+        
+        # Validate and format LLM result for multiple choice
+        if question_type == 'multiple_choice':
+            # Ensure options is a list of 4 strings
+            options = llm_result.get('options', [])
+            if not isinstance(options, list) or len(options) != 4:
+                print(f"DEBUG: Invalid options format: {options}")
+                raise HTTPException(status_code=500, detail="LLM did not generate exactly 4 options")
+            
+            # Ensure all options are non-empty strings
+            formatted_options = []
+            for i, opt in enumerate(options):
+                if not isinstance(opt, str) or not opt.strip():
+                    print(f"DEBUG: Empty or invalid option at index {i}: {opt}")
+                    raise HTTPException(status_code=500, detail=f"Option {i+1} is empty or invalid")
+                formatted_options.append(opt.strip())
+            
+            # Ensure correct_answer exists and is in options
+            correct_answer = llm_result.get('correct_answer', '').strip()
+            if not correct_answer:
+                raise HTTPException(status_code=500, detail="LLM did not provide a correct answer")
+            
+            if correct_answer not in formatted_options:
+                print(f"DEBUG: Correct answer not in options. Answer: '{correct_answer}', Options: {formatted_options}")
+                # If correct answer is not in options, use the first option as correct
+                correct_answer = formatted_options[0]
+                print(f"DEBUG: Using first option as correct answer: '{correct_answer}'")
+            
+            question = QuizQuestion(
+                id=question_id,
+                type='multiple_choice',
+                question=llm_result.get('question', f"What is the primary function of {topic_label}?").strip(),
+                options=formatted_options,
+                correct_answer=correct_answer,
+                explanation=llm_result.get('explanation', f"Based on the context about {topic_label}").strip(),
+                citations=citations
+            )
+            
+        elif question_type == 'true_false':
+            question = QuizQuestion(
+                id=question_id,
+                type='true_false',
+                question=llm_result.get('question', f"True or False: {topic_label} is important."),
+                options=["True", "False"],
+                correct_answer=llm_result.get('correct_answer', 'True'),
+                explanation=llm_result.get('explanation', f"This relates to {topic_label}"),
+                citations=citations
+            )
+        else:  # open_ended
+            question = QuizQuestion(
+                id=question_id,
+                type='open_ended',
+                question=llm_result.get('question', f"Explain {topic_label}."),
+                options=None,
+                correct_answer=llm_result.get('correct_answer', f"{topic_label} is important in networking."),
+                explanation=llm_result.get('explanation', f"Key information about {topic_label}"),
+                citations=citations
+            )
+        
+        print(f"Successfully generated question: {question.id}")
+        return question
+        
+    except Exception as e:
+        print(f"Error generating question: {e}")
+        raise
+
+
+def _select_context_subset(contexts: List[ContextItem]) -> List[ContextItem]:
+    size = max(4, min(len(contexts), random.randint(5, 10)))
+    return random.sample(contexts, k=size) if len(contexts) > size else contexts
+
+def _llm_grade_open_ended_answer(question: str, user_answer: str, correct_answer: str, context: str) -> tuple[bool, str, float]:
+    """Use Ollama to intelligently grade open-ended answers."""
+    if not _check_ollama_health():
+        return False, 'F', 0.0
+    
+    client = _load_ollama_client()
+    model_name = _get_ollama_model()
+    
+    prompt = f"""You are an expert networking professor grading an open-ended answer. CRITICAL: Perform comprehensive analysis including vector database semantic comparison.
+
+QUESTION: {question}
+
+STUDENT'S ANSWER: "{user_answer}"
+
+EXPECTED ANSWER: "{correct_answer}"
+
+VECTOR DATABASE CONTEXT: {context[:2000]}
+
+COMPREHENSIVE GRADING ANALYSIS:
+
+1. SEMANTIC SIMILARITY ANALYSIS:
+   - Compare the student's answer with the expected answer using contextual meaning
+   - Check if key concepts from the vector database context are present
+   - Evaluate if the answer demonstrates understanding of core networking principles
+   - Look for paraphrased correct concepts, not exact wording
+
+2. LENGTH AND COMPLETENESS VALIDATION:
+   - Answer length: {len(user_answer)} characters
+   - Word count: {len(user_answer.split())} words
+   - Is this length adequate for a detailed explanation? (Open-ended questions typically require 15+ words)
+   - Does the answer provide sufficient detail or is it superficially short?
+
+3. CONTENT QUALITY ASSESSMENT:
+   - Technical accuracy: Are the networking concepts correct?
+   - Depth: Does the answer show deep understanding or surface-level knowledge?
+   - Relevance: Does it directly address the question asked?
+   - Terminology: Is appropriate networking terminology used correctly?
+
+4. AUTOMATIC FAILURE CONDITIONS (Grade F):
+   - Single letters (A, B, C, D) or single words (True, False, POP3, IMAP, etc.)
+   - Answers under 10 characters
+   - Answers with less than 3 words
+   - Answers that contain no meaningful technical content
+   - Answers completely unrelated to the question
+   - Vague, generic phrases without specific technical details (e.g., "stop the breach", "secure it", "fix the problem", "protect network", "use security")
+   - Answers that don't address the specific technical aspects asked in the question
+   - Generic statements that could apply to any security scenario without specific details
+
+5. GRADING SCALE:
+   - A: Excellent - Comprehensive, accurate, demonstrates deep understanding (20+ words with correct concepts)
+   - B: Good - Mostly accurate with good understanding (15+ words, minor gaps)
+   - C: Average - Basic understanding with some errors (10+ words, partial concepts)
+   - D: Poor - Limited understanding, significant gaps (5+ words, major errors)
+   - F: Fail - Inadequate length, single words, or completely incorrect
+
+RESPOND IN THIS EXACT JSON FORMAT:
+{{
+    "grade": "A",
+    "is_correct": true,
+    "confidence": 0.95,
+    "feedback": "Detailed analysis explaining why the answer received this grade, including semantic comparison with expected answer and vector database context"
+}}
+
+EXAMPLES:
+- Question about IMAP vs POP3, student answers "POP3" → Grade F (inadequate length, single word)
+- Expected: "TCP provides reliable transmission", student: "TCP ensures reliable data delivery" → Grade A (semantic match)
+- Expected: "DNS translates names to IPs", student: "DNS converts website names" → Grade B (partial semantic match)
+- Student answers with vague phrases like "stop the breach", "secure it", "fix the problem" → Grade F (no specific technical details)
+- Student gives generic answers that could apply to any scenario without addressing specific question → Grade F
+
+Provide only ONE grade (A, B, C, D, or F). Focus on semantic meaning from vector database context, not exact wording.
+
+CRITICAL: For open-ended networking questions, require SPECIFIC technical details and explanations. Generic, vague, or superficial answers that lack technical depth must receive Grade F, regardless of any partial correctness. The answer must demonstrate actual understanding of networking concepts, not just common sense statements."""
