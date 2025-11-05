@@ -10,7 +10,7 @@ An intelligent Retrieval-Augmented Generation (RAG) system for networking and se
 
 - **Python**: 3.12.8
 - **Ollama**: Latest version
-- **RAM**: 4GB+ recommended
+- **RAM**: 6GB+ recommended
 - **Storage**: ~1GB for models and database
 
 ### 1. Environment Setup
