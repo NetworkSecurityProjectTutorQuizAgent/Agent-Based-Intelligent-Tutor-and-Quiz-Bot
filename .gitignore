@@ -1,1 +1,39 @@
+# Environment
+.env
+.rag/
+venv/
+env/
 
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Logs (generated at runtime)
+logs/
+*.log
+
+# Database (generated at runtime)
+chroma_db/
+*.sqlite3
+
+# PDFs (course materials, should not be shared)
+pdfs/
+*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Old/backup files
+old-files/
+*.bak
+*~
