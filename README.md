@@ -154,7 +154,7 @@ The Quiz mode provides interactive learning through intelligent question generat
 
 ### Q&A Mode Agent Flow
 
-![1762106812431](image/README/1762106812431.png)
+![1762106812431](image/1762106812431.png)
 
 **Process Details:**
 
@@ -165,6 +165,6 @@ The Quiz mode provides interactive learning through intelligent question generat
 
 ### Quiz Mode Agent Flow
 
-![1762106791641](image/README/1762106791641.png)
+![1762106791641](image/1762106791641.png)
 
 ---
