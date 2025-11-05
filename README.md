@@ -38,8 +38,8 @@ pip install -r requirements.txt
 Download and install Ollama from [ollama.com](https://ollama.com/download)
 
 ```bash
-# Pull the Gemma3 1B model
-ollama pull gemma3:1b
+# Pull the mistral 7B model
+ollama pull mistral:7b
 
 # Start Ollama service (runs automatically on first use)
 ollama serve
@@ -65,7 +65,7 @@ Access the web interface at: **http://localhost:8000**
 
 ### Language Model
 
-- **Model**: Ollama with Gemma3:1b
+- **Model**: Ollama with mistral:7b
 - **Purpose**: Generates contextual answers and quiz questions
 - **Type**: Local LLM (runs on your machine)
 
