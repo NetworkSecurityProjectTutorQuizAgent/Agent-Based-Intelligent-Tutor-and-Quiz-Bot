@@ -150,6 +150,94 @@ The Quiz mode provides interactive learning through intelligent question generat
 
 ---
 
+## Security & Privacy Features
+
+This system implements comprehensive security safeguards to protect against common web application threats and ensure privacy compliance.
+
+### Security Features (5 Total)
+
+#### 1. **Rate Limiting**
+- **Protection**: Prevents DoS attacks and API abuse
+- **Configuration**: 50 requests per 60-second sliding window
+- **Behavior**: Automatically blocks excessive requests with HTTP 429 response
+- **User Experience**: Displays rate limit status in response headers
+
+#### 2. **PII Detection & Sanitization**
+- **Detection**: Automatically identifies sensitive information:
+  - Email addresses
+  - Phone numbers
+  - Social Security Numbers (SSN)
+  - Credit card numbers
+  - IP addresses
+- **Action**: Auto-sanitizes detected PII before processing
+- **Compliance**: Supports GDPR and privacy regulations
+- **Logging**: Security events logged for audit purposes
+
+#### 3. **SQL Injection Protection**
+- **Detection Patterns**:
+  - Boolean-based injection (`OR 1=1`)
+  - Command injection (`DROP TABLE`, `DELETE`, etc.)
+  - SQL comments (`--`, `/* */`)
+  - UNION-based attacks
+- **Action**: Blocks malicious requests immediately
+- **Response**: Returns HTTP 400 with security error message
+
+#### 4. **XSS (Cross-Site Scripting) Protection**
+- **Detection Patterns**:
+  - Script tags (`<script>`)
+  - JavaScript protocols (`javascript:`)
+  - Event handlers (`onclick`, `onerror`, etc.)
+  - Embedded objects (`<iframe>`, `<object>`, `<embed>`)
+- **Action**: Blocks XSS attempts with HTTP 400 response
+- **Logging**: Critical security events logged
+
+#### 5. **Input Validation**
+- **Length Limits**: Maximum 5000 characters per text field
+- **Sanitization**: Removes null bytes and excessive whitespace
+- **Validation**: Ensures proper data types and formats
+- **Error Handling**: Clear error messages for invalid inputs
+
+
+## Network Tracing & Monitoring
+
+Complete observability of data flow through the RAG pipeline with HTTP packet capture.
+
+### Trace Capabilities
+
+
+
+####  **HTTP Packet Capture**
+Application-level packet capture similar to Wireshark:
+- Full HTTP request details (method, URL, headers, body)
+- Complete HTTP response details (status, headers, body)
+- Packet sizes and timing information
+- Saved to `logs/http_packets.log`
+
+
+### Network-Level Packet Capture with Wireshark
+
+For deeper network analysis, you can use Wireshark alongside the built-in HTTP packet capture to see actual TCP/IP packets at the network layer.
+
+#### Quick Wireshark Setup
+
+1. **Install Wireshark** (if not already installed) from [wireshark.org](https://www.wireshark.org/)
+2. **Run Wireshark as Administrator**
+3. **Select Capture Interface**: "Loopback: lo" (Windows) or "Loopback" (Linux/Mac)
+4. **Apply Filter**: `tcp.port == 8000`
+5. **Start Capture**
+6. **Make requests** through the web interface
+7. **Observe packets**: TCP handshake, HTTP requests/responses
+
+#### Useful Wireshark Display Filters
+
+```
+http                           # Show only HTTP traffic
+http.request.method == "POST"  # Show POST requests
+http.response.code == 200      # Show successful responses
+http.response.code == 400      # Show blocked requests (security)
+tcp.stream eq 0                # Follow specific TCP stream
+```
+
 ## Architecture Diagrams
 
 ### Q&A Mode Agent Flow
