@@ -50,13 +50,11 @@ _model: Optional[SentenceTransformer] = None
 _collection: Optional[chromadb.Collection] = None
 _ollama_client: Optional[Client] = None
 
-
 def _load_model() -> SentenceTransformer:
     global _model
     if _model is None:
         _model = SentenceTransformer(EMBED_MODEL_NAME, device="cpu")
     return _model
-
 
 def _load_collection() -> chromadb.Collection:
     global _collection
@@ -68,14 +66,12 @@ def _load_collection() -> chromadb.Collection:
             raise e
     return _collection
 
-
 def _get_ollama_model() -> str:
     global OLLAMA_MODEL
     if OLLAMA_MODEL is None:
         load_dotenv()
         OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:1b")
     return OLLAMA_MODEL
-
 
 def _load_ollama_client() -> Client:
     global _ollama_client
@@ -132,12 +128,10 @@ def _is_qa_related(question: str) -> bool:
         print(f"Error checking if question is QA-related: {e}")
         return True  # Default to True on error
 
-
 def _embed_query(text: str) -> List[float]:
     model = _load_model()
     vec = model.encode([text], convert_to_numpy=False, normalize_embeddings=True)
     return vec[0].tolist()
-
 
 def _fetch_context(query_embedding: List[float], top_k: int) -> List[ContextItem]:
     collection = _load_collection()
@@ -190,7 +184,6 @@ def _fetch_context(query_embedding: List[float], top_k: int) -> List[ContextItem
     
     return items[:top_k]
 
-
 def _summarize_with_ollama(question: str, contexts: List[ContextItem]) -> str:
     if not _check_ollama_health():
         raise HTTPException(status_code=503, detail="Ollama service is not available. Please ensure Ollama is running and the model is loaded.")
@@ -220,7 +213,6 @@ def _summarize_with_ollama(question: str, contexts: List[ContextItem]) -> str:
         options={"num_predict": 1000, "temperature": 0.7}
     )
     return response["message"]["content"].strip()
-
 
 def ask_question(question: str, top_k: int = DEFAULT_TOP_K) -> AskResponse:
     """Main Q&A function"""
