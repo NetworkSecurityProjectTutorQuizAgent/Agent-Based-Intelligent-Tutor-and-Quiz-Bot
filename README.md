@@ -254,6 +254,9 @@ tcp.stream eq 0                # Follow specific TCP stream
 ### Quiz Mode Agent Flow
 
 
-![1234456](image/1234456.png)
+<!-- ![1234456](image/1234456.png) -->
+<p align="center">
+  <img src="image/1234456.png" alt="Quiz Mode Flow" style="display:block;margin:0;padding:0;width:60%;border:none;background:transparent;">
+</p>
 
 ---
