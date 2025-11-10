@@ -253,6 +253,6 @@ tcp.stream eq 0                # Follow specific TCP stream
 
 ### Quiz Mode Agent Flow
 
-![1762106791641](image/1762106791641.png)
+![1234456](image/1234456.png)
 
 ---
