@@ -651,10 +651,12 @@ CRITICAL REQUIREMENTS:
 3. The question should require detailed explanation, not simple recall
 4. The correct answer should be comprehensive and based on the context
 5. Do not include any chapter numbers, page numbers, section numbers, references, citations, or source names in the question or explanation
-6. NEVER reference images, figures, diagrams, pictures, tables, or visual elements in the question
-7. NEVER use phrases like "see the figure", "as shown in", "refer to the diagram", "in the picture above"
-8. Questions must be answerable using ONLY the text provided in the context
-9. Make each question unique and specific - avoid generic phrasing
+6. ⚠️ CRITICAL: NEVER EVER reference images, figures, diagrams, pictures, tables, charts, illustrations, or ANY visual elements
+7. ⚠️ FORBIDDEN PHRASES: "see the figure", "as shown in Figure X.X", "refer to the diagram", "in the picture", "the image shows", "according to the table", "in the chart", "illustrated in"
+8. ⚠️ DO NOT include any figure numbers (e.g., Figure 4.16, Figure 3.2), table numbers, or visual references
+9. Questions must be answerable using ONLY the text-based information provided in the context
+10. If the context mentions a figure or diagram, extract the TEXT content or concepts described, NOT the reference to the visual
+11. Make each question unique and specific - avoid generic phrasing
 
 OUTPUT FORMAT (copy this structure exactly):
 {{
