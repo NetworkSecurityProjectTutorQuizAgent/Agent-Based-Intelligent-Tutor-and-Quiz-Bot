@@ -20,6 +20,7 @@ from sentence_transformers import SentenceTransformer
 from ollama import Client
 import json
 import re
+from itertools import cycle
 
 
 # Constants
@@ -702,13 +703,18 @@ def generate_quiz(topic: Optional[str], question_type: str, count: int) -> QuizR
         questions = []
         seen_questions = set()
         num_questions = max(MIN_QUESTIONS, min(count, MAX_QUESTIONS))
+        question_types_cycle = cycle(['multiple_choice', 'true_false', 'open_ended'])
         
         i = 0
         attempts = 0
         max_attempts = num_questions * 10  # Increased from 6 to 10 for more attempts
         while i < num_questions and attempts < max_attempts:
             print(f"=== Generating question {i+1}/{num_questions} (attempt {attempts+1}) ===")
-            q_type = question_type if question_type != 'random' else random.choice(['multiple_choice', 'true_false', 'open_ended'])
+            if question_type == 'random':
+                q_type = next(question_types_cycle)
+                print(f"Random mode: selected {q_type} for balanced distribution")
+            else:
+                q_type = question_type
             ctx_subset = _select_context_subset(contexts)
             q = _generate_question_from_context(ctx_subset, q_type, topic_query, attempt=attempts)
             
