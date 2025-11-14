@@ -2,7 +2,6 @@
 
 - Expects a Chroma persistent directory (default: ./chroma_db) built with the same HF model.
 - Defaults align with HF pipelines (collection name 'networking_context').
-- No OpenAI usage.
 """
 from __future__ import annotations
 
@@ -94,4 +93,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
