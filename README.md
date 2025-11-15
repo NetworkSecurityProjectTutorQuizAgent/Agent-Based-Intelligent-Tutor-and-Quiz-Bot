@@ -246,7 +246,7 @@ tcp.stream eq 0                # Follow specific TCP stream
 
 ![9876543](image/9876543.png)
 <p align="center">
-  <img src="image/9876543.png" alt="Quiz Mode Flow" style="display:block;margin:0;padding:0;width:60%;border:none;background:transparent;">
+  <img src="image/9876543.png" alt="Quiz Mode Flow" style="display:block;margin:0;padding:0;width:70%;border:none;background:transparent;">
 </p>
 
 
