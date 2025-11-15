@@ -242,6 +242,10 @@ tcp.stream eq 0                # Follow specific TCP stream
 
 ## Architecture Diagrams
 
+### System Architecture 
+
+![9876543](image/9876543.png)
+
 ### Q&A Mode Agent Flow
 
 ![1762106812431](image/1762106812431.png)
