@@ -3,6 +3,7 @@
 - No argparse: adjust paths and flags inside main().
 - Persists to ./chroma_db with collection name 'langchain' by default.
 """
+# This script automates PDF loading, chunking, embedding, and storage
 from __future__ import annotations
 
 from pathlib import Path
@@ -34,7 +35,8 @@ TOKEN_STRIDE = 200
 CHUNK_SIZE = 800
 BATCH_SIZE = 64
 
-
+# Creates a local ChromaDB folder (chroma_db)
+# purpose: So the bot can store embeddings permanently.
 def init_chroma(persist_dir: Path) -> chromadb.PersistentClient:
     persist_dir.mkdir(parents=True, exist_ok=True)
     return chromadb.PersistentClient(
@@ -54,7 +56,11 @@ def get_or_create_collection(
             pass
     return client.get_or_create_collection(name=collection_name, metadata={"hnsw:space": "cosine"})
 
-
+# Reads each PDF page using PdfReader
+# Extracts text from each page
+# Tokenizes text (using tiktoken if available)
+# Breaks pages into chunks of size 800 tokens
+# Creates a unique ID for each chunk
 def iter_pdf_text_chunks(source_dir: Path) -> Iterable[Tuple[str, str, dict]]:
     pdf_paths = sorted(source_dir.glob("*.pdf"))
     if not pdf_paths:
@@ -104,7 +110,10 @@ def batched(iterable, batch_size: int):
     if batch:
         yield batch
 
-
+#Uses HuggingFace SentenceTransformer model ###msmarco-distilbert-base-v4###
+#Converts each chunk into a numerical vector
+#Normalizes embeddings for cosine similarity
+#purpose: Converts human text into machine-understandable vectors for semantic search.
 def embed_texts(model: SentenceTransformer, texts: List[str]) -> List[List[float]]:
     vectors = model.encode(texts, convert_to_numpy=False, normalize_embeddings=True)
     return [vec.tolist() for vec in vectors]
@@ -137,3 +146,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
