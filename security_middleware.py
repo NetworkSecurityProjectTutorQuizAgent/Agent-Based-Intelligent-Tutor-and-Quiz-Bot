@@ -2,21 +2,29 @@
 Security & Privacy Middleware for RAG System
 Implements rate limiting, input sanitization, PII detection, and audit logging
 """
+#This set of imports provides the essential tools needed for logging, text processing, hashing, structured data, 
+#and file management inside our backend or trace system.
 from __future__ import annotations
-
+#Provides hashing algorithms (MD5, SHA256, etc.)
 import hashlib
+#Regular expressions for pattern matching
 import re
 import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
+#JSON serialization/conversion
+#Saving trace logs
 import json
-
+#These imports are typically used inside a security / logging middleware, for example:
+#Authenticating requests,#Blocking unauthorized access.#Logging request/response info,#Adding headers / enforcing policies
 from fastapi import Request, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
+#These settings defend your FastAPI RAG system by limiting request volume, restricting input size, 
+#and storing audit + security logs for accountability and threat monitoring.
 
 # Configuration
 RATE_LIMIT_REQUESTS = 50  # Max requests per window Prevents Dos Attack
@@ -24,6 +32,9 @@ RATE_LIMIT_WINDOW = 60  # Window in seconds
 MAX_INPUT_LENGTH = 5000  # Max characters per request Input Validation
 AUDIT_LOG_PATH = Path("logs/audit.log") # FOR accountability
 SECURITY_LOG_PATH = Path("logs/security.log")
+
+#This dictionary defines regular expression patterns used to detect sensitive personal information (PII) 
+#in user input before it reaches your system.
 
 # PII Patterns 
 PII_PATTERNS = {
@@ -33,7 +44,9 @@ PII_PATTERNS = {
     'credit_card': r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b',
     'ip_address': r'\b(?:\d{1,3}\.){3}\d{1,3}\b',
 }
-
+#is a set of regex signatures designed to detect common SQL injection payloads—such as boolean logic exploits, 
+#stacked queries, UNION injections,
+#and comment-based attacks—before malicious input reaches your database.
 # SQL Injection patterns
 SQL_INJECTION_PATTERNS = [
     r"(\bOR\b|\bAND\b)\s+\d+\s*=\s*\d+",
@@ -54,6 +67,10 @@ XSS_PATTERNS = [
     r"<embed",
 ]
 
+#prevents users (clients) from sending too many requests in a short period, which protects your API from: DDoS attacks
+#Bot spamming
+#Brute-force attempts
+#Overuse of free endpoints
 
 class RateLimiter:
     """Rate limiting to prevent abuse."""
@@ -80,12 +97,13 @@ class RateLimiter:
         # Add current request
         self.clients[client_id].append(now)
         return True
-    
+    #This method returns how many requests a client can still make before hitting the rate limit.
     def get_remaining(self, client_id: str) -> int:
         """Get remaining requests for client."""
         return max(0, self.max_requests - len(self.clients[client_id]))
 
-
+#This function scans input text and detects any PII (Personally Identifiable Information) such as emails, 
+#phone numbers, SSNs, credit cards, IP addresses, etc., based on regex rules
 class SecurityValidator:
     """Validates and sanitizes inputs for security threats."""
     
@@ -102,6 +120,7 @@ class SecurityValidator:
                     'position': match.span()
                 })
         return detections
+#This function removes or masks sensitive personal information (PII) in user input before that text is:
     
     @staticmethod
     def sanitize_pii(text: str) -> str:
@@ -117,6 +136,8 @@ class SecurityValidator:
             elif pii_type == 'credit_card':
                 sanitized = re.sub(pattern, '[CARD_REDACTED]', sanitized, flags=re.IGNORECASE)
         return sanitized
+
+    #Scans input text for SQL injection patterns using regular expressions.
     
     @staticmethod
     def detect_sql_injection(text: str) -> bool:
@@ -125,6 +146,8 @@ class SecurityValidator:
             if re.search(pattern, text, re.IGNORECASE):
                 return True
         return False
+
+#Detects possible Cross-Site Scripting (XSS) attacks in input text.
     
     @staticmethod
     def detect_xss(text: str) -> bool:
@@ -133,11 +156,15 @@ class SecurityValidator:
             if re.search(pattern, text, re.IGNORECASE):
                 return True
         return False
+
+#Ensures user input does not exceed maximum allowed length.
     
     @staticmethod
     def validate_input_length(text: str, max_length: int = MAX_INPUT_LENGTH) -> bool:
         """Validate input length."""
         return len(text) <= max_length
+
+    #mask it and send
     
     @staticmethod
     def sanitize_input(text: str) -> str:
@@ -350,6 +377,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                 request._receive = receive
         
         # Add security headers to response
+        #Logs all activity,Adds security headers, Returns updated request to FastAPI
         response = await call_next(request)
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['X-Frame-Options'] = 'DENY'
@@ -411,4 +439,5 @@ def get_security_stats() -> Dict:
         print(f"Error reading security stats: {e}")
     
     return dict(stats)
+
 
