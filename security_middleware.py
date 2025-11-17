@@ -19,13 +19,13 @@ from starlette.responses import Response
 
 
 # Configuration
-RATE_LIMIT_REQUESTS = 50  # Max requests per window
+RATE_LIMIT_REQUESTS = 50  # Max requests per window Prevents Dos Attack
 RATE_LIMIT_WINDOW = 60  # Window in seconds
-MAX_INPUT_LENGTH = 5000  # Max characters per request
-AUDIT_LOG_PATH = Path("logs/audit.log")
+MAX_INPUT_LENGTH = 5000  # Max characters per request Input Validation
+AUDIT_LOG_PATH = Path("logs/audit.log") # FOR accountability
 SECURITY_LOG_PATH = Path("logs/security.log")
 
-# PII Patterns
+# PII Patterns 
 PII_PATTERNS = {
     'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
     'phone': r'\b(\+\d{1,3}[-.]?)?\(?\d{3}\)?[-.]?\d{3}[-.]?\d{4}\b',
@@ -44,7 +44,7 @@ SQL_INJECTION_PATTERNS = [
     r"'\s*(OR|AND)\s*'",
 ]
 
-# XSS patterns
+# XSS patterns  such JS injections 
 XSS_PATTERNS = [
     r"<script[^>]*>.*?</script>",
     r"javascript:",
@@ -411,3 +411,4 @@ def get_security_stats() -> Dict:
         print(f"Error reading security stats: {e}")
     
     return dict(stats)
+
