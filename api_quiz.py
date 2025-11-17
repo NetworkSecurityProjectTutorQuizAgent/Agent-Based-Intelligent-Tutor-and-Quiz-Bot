@@ -776,8 +776,9 @@ async def check_quiz_answer(question_id: str, user_answer: str) -> QuizCheckResp
     """Check quiz answer with context retrieval and web citations."""
     if question_id not in _quiz_cache:
         raise HTTPException(status_code=404, detail="Question not found")
-
+    
     try:
+        #getting the data from quiz cache
         cached_data = _quiz_cache[question_id]
         question_text = cached_data.get("question", "")
         topic = cached_data.get("topic", "")
@@ -797,12 +798,12 @@ async def check_quiz_answer(question_id: str, user_answer: str) -> QuizCheckResp
             answer_embedding = _embed_query(search_query)
             relevant_contexts = _fetch_context(answer_embedding, QUIZ_TOP_K)
 
-            # Combine contexts for LLM validation
+            # Combine all contexts to form context text for LLM validation
             context_text = "\n\n".join([f"[{c.rank}] {c.text}" for c in relevant_contexts if c.text])
         else:
             context_text = cached_data.get("context", "")
 
-        # Grade the answer using LLM with retrieved context
+        # Grade the answer using LLM with retrieved context and from the response pydantic model
         is_correct, grade, confidence = _grade_answer(
             user_answer,
             correct_answer,
@@ -814,6 +815,7 @@ async def check_quiz_answer(question_id: str, user_answer: str) -> QuizCheckResp
         if question_type in ['multiple_choice', 'true_false']:
             feedback = f"Your answer: '{user_answer}'. Correct answer: '{correct_answer}'"
         else:
+            #open end question
             feedback = f"Your answer has been graded as '{grade}' with {confidence:.1%} confidence. "
             if not is_correct:
                 feedback += f"The expected answer was: '{correct_answer[:100]}'"
