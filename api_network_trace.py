@@ -15,12 +15,14 @@ from collections import defaultdict
 from fastapi import HTTPException
 from pydantic import BaseModel
 
+#Captures HTTP packets (method, URL, headers, body preview, status codes) and logs them to disk.
 
 # Configuration
 TRACE_LOG_PATH = Path("logs/network_trace.log")
 HTTP_PACKET_LOG_PATH = Path("logs/http_packets.log")
 MAX_TRACES = 100  # Keep last 100 traces in memory
 
+#Records internal events (e.g., embedding lookup, vector search, LLM call) with timestamps, durations, sizes, and metadata.
 
 class TraceEvent(BaseModel):
     """Individual trace event in the data flow."""
@@ -44,6 +46,8 @@ class HTTPPacket(BaseModel):
     body_size_bytes: int = 0
     protocol: str = "HTTP/1.1"
 
+#Full pipeline traces->network trace log
+#http_packets.log → Raw HTTP capture
 
 class NetworkTrace(BaseModel):
     """Complete network trace for a request."""
@@ -378,3 +382,4 @@ class TraceListResponse(BaseModel):
 
 class AnalyticsResponse(BaseModel):
     analytics: Dict
+
