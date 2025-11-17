@@ -25,7 +25,7 @@ except ImportError as e:
         "Missing dependency: sentence-transformers. Install it with\n\n    pip install sentence-transformers\n"
     ) from e
 
-
+#Default config
 # Defaults
 DEFAULT_EMBED_MODEL = "sentence-transformers/msmarco-distilbert-base-v4"
 DEFAULT_COLLECTION_NAME = "networking_context"
@@ -98,7 +98,13 @@ def iter_pdf_text_chunks(source_dir: Path) -> Iterable[Tuple[str, str, dict]]:
                     "token_start": start,
                 }
                 yield chunk_id, chunk_text.strip(), metadata
-
+#Loads embedding model
+#Reads all PDFs and splits into chunks
+#Embeds text → high-dimensional vectors
+#Stores vectors + text into ChromaDB
+#Saves database to disk so that later:
+#You can run semantic search
+#Your RAG system can retrieve relevant chunks
 
 def batched(iterable, batch_size: int):
     batch = []
@@ -117,8 +123,12 @@ def batched(iterable, batch_size: int):
 def embed_texts(model: SentenceTransformer, texts: List[str]) -> List[List[float]]:
     vectors = model.encode(texts, convert_to_numpy=False, normalize_embeddings=True)
     return [vec.tolist() for vec in vectors]
-
-
+#Model loading
+#ChromaDB collection creation
+#PDF text extraction
+#Batch embeddings
+#Upserting into the vector DB
+#Saving the database
 def main() -> None:
     source_dir = DEFAULT_SOURCE_DIR
     persist_dir = DEFAULT_PERSIST_DIR
@@ -146,4 +156,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
