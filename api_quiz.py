@@ -129,7 +129,7 @@ def _get_ollama_model() -> str:
     global OLLAMA_MODEL
     if OLLAMA_MODEL is None:
         load_dotenv()
-        OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:1b")
+        OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "mistral:7b")
     return OLLAMA_MODEL
 
 
