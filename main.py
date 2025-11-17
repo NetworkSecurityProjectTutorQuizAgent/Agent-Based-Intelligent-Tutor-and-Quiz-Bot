@@ -78,13 +78,13 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
+#checks health of application
 @app.get("/health")
 def health():
     """Health check endpoint."""
     try:
-        _load_model()
-        _load_collection()
+        _load_model() #sentese Transformeners 
+        _load_collection() #context
         ollama_ok = _check_ollama_health()
         return {
             "status": "ok" if ollama_ok else "warning", 
