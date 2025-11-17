@@ -1,6 +1,8 @@
 """
 Quiz Mode API - Handles quiz generation and answer checking with web citations
 """
+#This file powers the Quiz Mode: it generates high-quality networking/security quiz questions from  vector DB using Ollama, 
+#grades user answers (including open-ended ones with LLM reasoning), and enriches feedback with web citations.
 from __future__ import annotations
 
 from pathlib import Path
